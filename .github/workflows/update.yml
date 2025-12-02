@@ -2,15 +2,13 @@ name: ChatOps Bot
 
 on:
   issue_comment:
-    types: [created] # 监听评论创建
+    types: [created]
 
 jobs:
   update_code:
-    # 只有评论包含特定指令时才运行，节省资源
     if: contains(github.event.comment.body, '/update_page')
     runs-on: ubuntu-latest
-    
-    # 关键权限设置
+    
     permissions:
       contents: write
       issues: write
@@ -19,7 +17,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -30,8 +28,8 @@ jobs:
         env:
           USER_COMMENT: ${{ github.event.comment.body }}
         run: python scripts/manual_update.py
-        
+
       - name: Commit & Push Changes
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: '🤖 Bot updated code via Issue'
+          commit_message: 'Bot updated code via Issue comment'
