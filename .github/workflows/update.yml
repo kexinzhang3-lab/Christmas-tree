@@ -1,44 +1,37 @@
-name: Update Code via Issue
+name: ChatOps Bot
 
 on:
   issue_comment:
-    types: [created]
+    types: [created] # 监听评论创建
 
 jobs:
-  update-code:
-    if: contains(github.event.comment.body, '```html') || contains(github.event.comment.body, '```css') || contains(github.event.comment.body, '```javascript')
+  update_code:
+    # 只有评论包含特定指令时才运行，节省资源
+    if: contains(github.event.comment.body, '/update_page')
     runs-on: ubuntu-latest
+    
+    # 关键权限设置
     permissions:
       contents: write
-    
+      issues: write
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Update index.html content
-        uses: actions/github-script@v6
+      - name: Checkout Code
+        uses: actions/checkout@v4
         with:
-          script: |
-            const fs = require('fs');
-            const commentBody = context.payload.comment.body;
-            
-            // 提取代码块的正则 (支持 html, css, js, 或者不带语言标识的 ```)
-            const regex = /```(?:html|css|javascript|js)?\s*([\s\S]*?)```/;
-            const match = commentBody.match(regex);
-            
-            if (match && match[1]) {
-              const newCode = match[1];
-              console.log('Detected code block, updating index.html...');
-              fs.writeFileSync('index.html', newCode);
-            } else {
-              console.log('No valid code block found.');
-              process.exit(1); // 失败退出，避免无效提交
-            }
+          fetch-depth: 0 
 
-      - name: Commit and Push changes
-        run: |
-          git config --global user.name "Auto-Update Bot"
-          git config --global user.email "bot@github.com"
-          git add index.html
-          git commit -m "Update index.html via Issue #${{ github.event.issue.number }}"
-          git push
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Run Update Script
+        env:
+          USER_COMMENT: ${{ github.event.comment.body }}
+        run: python scripts/manual_update.py
+        
+      - name: Commit & Push Changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: '🤖 Bot updated code via Issue'
