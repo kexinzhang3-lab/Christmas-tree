@@ -1,0 +1,44 @@
+name: Update Code via Issue
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  update-code:
+    if: contains(github.event.comment.body, '```html') || contains(github.event.comment.body, '```css') || contains(github.event.comment.body, '```javascript')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Update index.html content
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const commentBody = context.payload.comment.body;
+            
+            // 提取代码块的正则 (支持 html, css, js, 或者不带语言标识的 ```)
+            const regex = /```(?:html|css|javascript|js)?\s*([\s\S]*?)```/;
+            const match = commentBody.match(regex);
+            
+            if (match && match[1]) {
+              const newCode = match[1];
+              console.log('Detected code block, updating index.html...');
+              fs.writeFileSync('index.html', newCode);
+            } else {
+              console.log('No valid code block found.');
+              process.exit(1); // 失败退出，避免无效提交
+            }
+
+      - name: Commit and Push changes
+        run: |
+          git config --global user.name "Auto-Update Bot"
+          git config --global user.email "bot@github.com"
+          git add index.html
+          git commit -m "Update index.html via Issue #${{ github.event.issue.number }}"
+          git push
